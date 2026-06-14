@@ -2,6 +2,7 @@ import React, { Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, GizmoHelper, GizmoViewport } from '@react-three/drei';
 import Room from './components/Room';
+import Judy from './components/Judy';
 
 export default function App() {
   return (
@@ -16,6 +17,8 @@ export default function App() {
         {/* Room 컴포넌트가 로드될 때까지 빈 화면을 보여줍니다 (필요 시 로딩 스피너로 교체 가능) */}
         <Suspense fallback={null}>
           <Room />
+          {/* Judy 캐릭터를 방 안의 적당한 위치에 배치합니다 (위치와 크기는 필요에 따라 조절해 주세요) */}
+          <Judy position={[0, 0, 0]} scale={1} />
         </Suspense>
         
         {/* 마우스 드래그로 방을 360도로 돌려볼 수 있게 해주는 유용한 컨트롤러 */}

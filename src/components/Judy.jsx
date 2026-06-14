@@ -1,0 +1,33 @@
+import React, { useRef, useEffect } from 'react';
+import { useGLTF, useAnimations } from '@react-three/drei';
+
+export default function Judy(props) {
+  const group = useRef();
+  // 💡 압축 과정에서 애니메이션이 유실되었는지 확인하기 위해 임시로 '원본(raw)' 파일을 불러옵니다.
+  const { scene, animations, nodes } = useGLTF('/asset-raw/judy_police.glb');
+  
+  // 모델에 포함된 애니메이션들을 추출하여 제어할 수 있게 해주는 훅입니다.
+  const { actions } = useAnimations(animations, group);
+
+  useEffect(() => {
+    // 💡 브라우저 개발자 도구(F12) 콘솔에서 사용 가능한 애니메이션 목록을 확인합니다.
+    console.log('Judy의 애니메이션 목록:', actions);
+    
+    // 💡 캐릭터의 뼈대(Bone)와 부위별 이름(Node)을 확인하기 위한 로그입니다.
+    console.log('Judy의 모델 구조(Nodes):', nodes);
+
+    // 'Idle'이라는 이름의 애니메이션을 찾아 실행(play)합니다.
+    if (actions['Idle']) {
+      actions['Idle'].play();
+    }
+  }, [actions]);
+
+  return (
+    <group ref={group} {...props}>
+      <primitive object={scene} />
+    </group>
+  );
+}
+
+// 로딩 최적화를 위한 프리로드
+useGLTF.preload('/asset-raw/judy_police.glb');
