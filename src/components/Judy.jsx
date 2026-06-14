@@ -24,7 +24,7 @@ export default function Judy(props) {
 
   return (
     <group ref={group} {...props}>
-      <primitive object={scene} />
+      <primitive object={scene} rotation={[0, Math.PI, 0]} />
     </group>
   );
 }
