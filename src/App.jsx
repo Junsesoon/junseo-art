@@ -1,6 +1,6 @@
 import React, { Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, GizmoHelper, GizmoViewport } from '@react-three/drei';
+import { GizmoHelper, GizmoViewport } from '@react-three/drei';
 import Room from './components/Room';
 import Judy from './components/Judy';
 import Move from './components/Move';
@@ -23,9 +23,6 @@ export default function App() {
             <Judy scale={1} />
           </Move>
         </Suspense>
-        
-        {/* 마우스 드래그로 방을 360도로 돌려볼 수 있게 해주는 유용한 컨트롤러 */}
-        <OrbitControls makeDefault />
         
         {/* 우측 하단에 미니맵/나침반 역할의 Gizmo 추가 */}
         <GizmoHelper
