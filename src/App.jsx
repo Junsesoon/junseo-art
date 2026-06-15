@@ -1,37 +1,47 @@
-import React, { Suspense } from 'react';
+import React, { Suspense, useMemo } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { GizmoHelper, GizmoViewport } from '@react-three/drei';
+import { GizmoHelper, GizmoViewport, KeyboardControls } from '@react-three/drei';
+import { Physics } from '@react-three/rapier';
 import Room from './components/Room';
 import Judy from './components/Judy';
-import Move from './components/Move';
+import CharacterController, { Controls } from './physics/CharacterController';
 
 export default function App() {
+  // 키보드 컨트롤을 위한 맵을 정의합니다.
+  const map = useMemo(() => [
+    { name: Controls.forward, keys: ['ArrowUp', 'KeyW'] },
+    { name: Controls.back, keys: ['ArrowDown', 'KeyS'] },
+    { name: Controls.left, keys: ['ArrowLeft', 'KeyA'] },
+    { name: Controls.right, keys: ['ArrowRight', 'KeyD'] },
+    { name: Controls.jump, keys: ['Space'] },
+  ], []);
+
   return (
     <div style={{ width: '100vw', height: '100vh', backgroundColor: '#f0f0f0' }}>
-      <Canvas camera={{ position: [-5, 2, 5], fov: 60 }}>
-        {/* 카메라 옵션(겁나 헷갈림 ㅡㅡ)x:좌우, y:상하(높이), z:앞뒤(값이 커질수록 멀어짐) */}
-        {/* 전체적인 밝기를 담당하는 기본 조명 */}
-        <ambientLight intensity={1.5} />
-        {/* 입체감과 그림자를 만들어주는 방향성 조명 */}
-        <directionalLight position={[1, 10, 5]} intensity={2} />
-                
-        {/* Room 컴포넌트가 로드될 때까지 빈 화면을 보여줍니다 (필요 시 로딩 스피너로 교체 가능) */}
-        <Suspense fallback={null}>
-          <Room />
-          {/* Move 래퍼 컴포넌트로 감싸서 내부의 어떤 모델이든 키보드로 조종할 수 있게 됩니다. */}
-          <Move position={[0, 0, 0]} speed={3}>
-            <Judy scale={1} />
-          </Move>
-        </Suspense>
-        
-        {/* 우측 하단에 미니맵/나침반 역할의 Gizmo 추가 */}
-        <GizmoHelper
-          alignment="top-right" // 화면 우측 상단에 배치
-          margin={[80, 80]} // 화면 가장자리로부터의 여백 (x, y)
-        >
-          <GizmoViewport axisColors={['red', 'green', 'blue']} labelColor="white" />
-        </GizmoHelper>
-      </Canvas>
+      {/* KeyboardControls로 Canvas를 감싸고, 위에서 정의한 key map을 전달합니다. */}
+      <KeyboardControls map={map}>
+        <Canvas shadows camera={{ fov: 60 }}>
+          {/* 전체적인 밝기를 담당하는 기본 조명 */}
+          <ambientLight intensity={1.5} />
+          {/* 입체감과 그림자를 만들어주는 방향성 조명 */}
+          <directionalLight position={[1, 10, 5]} intensity={2} castShadow />
+
+          {/* Suspense는 내부 컴포넌트(모델 등)가 로드될 때까지 fallback을 보여줍니다. */}
+          <Suspense fallback={null}>
+            {/* Physics 컴포넌트로 감싸진 영역 안에서 물리 엔진이 활성화됩니다. */}
+            <Physics debug> {/* debug 속성 추가 시 콜라이더가 시각적으로 표시됩니다. */}
+              <Room position={[0, -1, 0]} />
+              <CharacterController>
+                <Judy scale={0.8} />
+              </CharacterController>
+            </Physics>
+          </Suspense>
+
+          <GizmoHelper alignment="top-right" margin={[80, 80]}>
+            <GizmoViewport axisColors={['red', 'green', 'blue']} labelColor="white" />
+          </GizmoHelper>
+        </Canvas>
+      </KeyboardControls>
     </div>
   );
 }
