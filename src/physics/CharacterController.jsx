@@ -13,7 +13,7 @@ export const Controls = {
   jump: 'jump',
 };
 
-export default function CharacterController({ children, speed = 4, jumpHeight = 0.4, ...props }) {
+export default function CharacterController({ children, speed = 4, jumpHeight = 0.4, isDebugMode, ...props }) {
   const body = useRef();
   const character = useRef(); // 캐릭터 모델을 감싸는 group의 ref
   const { rapier, world } = useRapier();
@@ -146,13 +146,21 @@ export default function CharacterController({ children, speed = 4, jumpHeight = 
 
     // --- 추가: 접지 및 점프 판정 디버깅 로그 ---
     // 매 프레임 로그가 도배되는 것을 막기 위해 접지 상태가 변할 때만 출력합니다.
-    if (isGrounded !== wasGrounded.current) {
-      console.log('접지 판정:', isGrounded ? '바닥에 닿음 (true)' : '공중에 있음 (false)');
-      wasGrounded.current = isGrounded;
+    if (isDebugMode) {
+      if (isGrounded !== wasGrounded.current) {
+        console.log('접지 판정:', isGrounded ? '바닥에 닿음 (true)' : '공중에 있음 (false)');
+      }
+      if (jumpPressed.current) {
+        console.log('점프 판정:', isGrounded ? '성공 (점프 실행!)' : '실패 (공중에 있음)');
+      }
+      
+      // React 상태(State) 대신 DOM을 직접 조작하여 좌표 텍스트를 업데이트합니다 (초당 60회 렌더링 방지용)
+      const coordsEl = document.getElementById('debug-coords');
+      if (coordsEl) {
+        coordsEl.innerText = `X: ${bodyPosition.x.toFixed(2)} | Y: ${bodyPosition.y.toFixed(2)} | Z: ${bodyPosition.z.toFixed(2)}`;
+      }
     }
-    if (jumpPressed.current) {
-      console.log('점프 판정:', isGrounded ? '성공 (점프 실행!)' : '실패 (공중에 있음)');
-    }
+    wasGrounded.current = isGrounded; // 로그 출력과 상관없이 이전 접지 상태는 항상 업데이트
 
     // --- 3. 이동 및 점프 속도 일괄 적용 ---
     // 점프 플래그가 설정되고 땅에 닿아있다면 점프 속도를 적용합니다.

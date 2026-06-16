@@ -1,4 +1,4 @@
-import React, { Suspense, useMemo } from 'react';
+import React, { Suspense, useMemo, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { GizmoHelper, GizmoViewport, KeyboardControls } from '@react-three/drei';
 import { Physics, RigidBody, CuboidCollider } from '@react-three/rapier';
@@ -17,8 +17,49 @@ export default function App() {
     { name: Controls.jump, keys: ['Space'] }, // 불필요한 'KeySpace' 값 제거
   ], []);
 
+  // 디버그 모드 상태 (현재는 기능 없이 UI 토글용으로만 사용)
+  const [isDebugMode, setIsDebugMode] = useState(false);
+
   return (
     <div style={{ width: '100vw', height: '100vh', backgroundColor: '#f0f0f0' }}>
+      {/* UI 영역 (Canvas 위에 절대 위치로 띄움) */}
+      <div style={{ position: 'absolute', top: 20, left: 20, zIndex: 1000, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <button
+          onClick={() => setIsDebugMode(!isDebugMode)}
+          style={{
+            padding: '10px 16px',
+            backgroundColor: isDebugMode ? '#ff4757' : '#ffffff',
+            color: isDebugMode ? '#ffffff' : '#333333',
+            border: 'none',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontWeight: 'bold',
+            boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+          }}
+        >
+          🔧 Debug: {isDebugMode ? 'ON' : 'OFF'}
+        </button>
+
+        {/* 캐릭터 좌표를 실시간으로 보여줄 텍스트 영역 */}
+        {isDebugMode && (
+          <div
+            id="debug-coords"
+            style={{
+              padding: '8px 12px',
+              backgroundColor: 'rgba(0, 0, 0, 0.7)',
+              color: '#00ffcc',
+              borderRadius: '6px',
+              fontFamily: 'monospace',
+              fontWeight: 'bold',
+              fontSize: '14px',
+              pointerEvents: 'none' /* 클릭 방지 */
+            }}
+          >
+            X: 0.00 | Y: 0.00 | Z: 0.00
+          </div>
+        )}
+      </div>
+
       {/* KeyboardControls로 Canvas를 감싸고, 위에서 정의한 key map을 전달합니다. */}
       <KeyboardControls map={map}>
         <Canvas shadows camera={{ fov: 60 }}>
@@ -29,12 +70,11 @@ export default function App() {
 
           {/* Suspense는 내부 컴포넌트(모델 등)가 로드될 때까지 fallback을 보여줍니다. */}
           <Suspense fallback={null}>
-            {/* Physics 컴포넌트로 감싸진 영역 안에서 물리 엔진이 활성화됩니다. */}
-            <Physics debug> {/* debug 속성 추가 시 콜라이더가 시각적으로 표시됩니다. */}
+            <Physics debug={isDebugMode}>
               <Room position={[0, -1, 0]} />
               {/* 맵 밖으로 추락하는 객체를 리셋해주는 전역 데스존 센서 */}
               <Underground position={[0, -10, 0]} />
-              <CharacterController>
+              <CharacterController isDebugMode={isDebugMode}>
                 <Judy scale={0.8} />
               </CharacterController>
             </Physics>
