@@ -6,6 +6,7 @@ import Room from './components/Room';
 import Judy from './components/Judy';
 import CharacterController, { Controls } from './physics/CharacterController';
 import Underground from './physics/Underground';
+import Floor from './components/Floor';
 
 export default function App() {
   // 키보드 컨트롤을 위한 맵을 정의합니다.
@@ -72,6 +73,13 @@ export default function App() {
           <Suspense fallback={null}>
             <Physics debug={isDebugMode}>
               <Room position={[0, -1, 0]} />
+                  
+                  {/* 바닥 타일 테스트 배치 */}
+                  <Floor type={1} position={[0, -0.9, 0]} />
+
+                  {/* 디버그 모드일 때만 표시되는 맵 측정/디버깅용 그리드 (바닥보다 살짝 위에 배치하여 겹침 방지) */}
+                  {isDebugMode && <gridHelper args={[100, 100]} position={[0, 0.00001, 0]} />}
+
               {/* 맵 밖으로 추락하는 객체를 리셋해주는 전역 데스존 센서 */}
               <Underground position={[0, -10, 0]} />
               <CharacterController isDebugMode={isDebugMode}>
