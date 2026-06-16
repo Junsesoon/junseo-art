@@ -13,7 +13,7 @@ export default function App() {
     { name: Controls.back, keys: ['ArrowDown', 'KeyS'] },
     { name: Controls.left, keys: ['ArrowLeft', 'KeyA'] },
     { name: Controls.right, keys: ['ArrowRight', 'KeyD'] },
-    { name: Controls.jump, keys: ['Space'] },
+    { name: Controls.jump, keys: ['Space'] }, // 불필요한 'KeySpace' 값 제거
   ], []);
 
   return (
