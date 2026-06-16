@@ -1,10 +1,11 @@
 import React, { Suspense, useMemo } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { GizmoHelper, GizmoViewport, KeyboardControls } from '@react-three/drei';
-import { Physics } from '@react-three/rapier';
+import { Physics, RigidBody, CuboidCollider } from '@react-three/rapier';
 import Room from './components/Room';
 import Judy from './components/Judy';
 import CharacterController, { Controls } from './physics/CharacterController';
+import Underground from './physics/Underground';
 
 export default function App() {
   // 키보드 컨트롤을 위한 맵을 정의합니다.
@@ -31,6 +32,8 @@ export default function App() {
             {/* Physics 컴포넌트로 감싸진 영역 안에서 물리 엔진이 활성화됩니다. */}
             <Physics debug> {/* debug 속성 추가 시 콜라이더가 시각적으로 표시됩니다. */}
               <Room position={[0, -1, 0]} />
+              {/* 맵 밖으로 추락하는 객체를 리셋해주는 전역 데스존 센서 */}
+              <Underground position={[0, -10, 0]} />
               <CharacterController>
                 <Judy scale={0.8} />
               </CharacterController>
