@@ -39,9 +39,21 @@ export default function Scr_CharacterSelect({ onSelect }) {
           onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.1)'; e.currentTarget.style.border = '3px solid transparent'; }}
           style={{ width: '220px', height: '320px', backgroundColor: 'white', borderRadius: '20px', boxShadow: '0 8px 16px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.3s ease', border: '3px solid transparent' }}
         >
-          <div style={{ fontSize: '72px', marginBottom: '20px' }}>👮‍♀️</div>
-          <h2 style={{ margin: 0, color: '#333', fontSize: '24px' }}>쥬디 (Judy)</h2>
+          <div style={{ fontSize: '72px', marginBottom: '20px' }}>🐰</div>
+          <h2 style={{ margin: 0, color: '#333', fontSize: '24px' }}>쥬디(Judy)</h2>
           <p style={{ color: '#666', marginTop: '12px', fontWeight: 'bold' }}>경찰 캐릭터</p>
+        </div>
+
+        {/* 닉 캐릭터 선택 카드 */}
+        <div 
+          onClick={() => handleSelect('nick')}
+          onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-10px)'; e.currentTarget.style.boxShadow = '0 12px 24px rgba(255, 152, 0, 0.3)'; e.currentTarget.style.border = '3px solid #FF9800'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.1)'; e.currentTarget.style.border = '3px solid transparent'; }}
+          style={{ width: '220px', height: '320px', backgroundColor: 'white', borderRadius: '20px', boxShadow: '0 8px 16px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.3s ease', border: '3px solid transparent' }}
+        >
+          <div style={{ fontSize: '72px', marginBottom: '20px' }}>🦊</div>
+          <h2 style={{ margin: 0, color: '#333', fontSize: '24px' }}>닉(Nick)</h2>
+          <p style={{ color: '#666', marginTop: '12px', fontWeight: 'bold' }}>여우 캐릭터</p>
         </div>
 
         {/* 업데이트 예정 카드 (선택 불가) */}

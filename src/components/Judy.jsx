@@ -3,8 +3,8 @@ import { useGLTF, useAnimations } from '@react-three/drei';
 
 export default function Judy(props) {
   const group = useRef();
-  // 💡 압축 과정에서 애니메이션이 유실되었는지 확인하기 위해 임시로 '원본(raw)' 파일을 불러옵니다.
-  const { scene, animations, nodes } = useGLTF('/asset-raw/judy_police.glb');
+  // 최적화된 모델 파일을 불러옵니다.
+  const { scene, animations, nodes } = useGLTF('/asset-static/judy_police-opt.glb');
   
   // 모델에 포함된 애니메이션들을 추출하여 제어할 수 있게 해주는 훅입니다.
   const { actions } = useAnimations(animations, group);
@@ -30,4 +30,4 @@ export default function Judy(props) {
 }
 
 // 로딩 최적화를 위한 프리로드
-useGLTF.preload('/asset-raw/judy_police.glb');
+useGLTF.preload('/asset-static/judy_police-opt.glb');

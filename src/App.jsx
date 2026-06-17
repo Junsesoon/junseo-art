@@ -4,6 +4,7 @@ import { GizmoHelper, GizmoViewport, KeyboardControls } from '@react-three/drei'
 import { Physics, RigidBody, CuboidCollider } from '@react-three/rapier';
 import Room from './components/Room';
 import Judy from './components/Judy';
+import Nick from './components/Nick';
 import CharacterController, { Controls } from './physics/CharacterController';
 import Underground from './physics/Underground';
 import Floor from './components/Floor';
@@ -100,7 +101,7 @@ export default function App() {
               {/* 맵 밖으로 추락하는 객체를 리셋해주는 전역 데스존 센서 */}
               <Underground position={[0, -10, 0]} />
               <CharacterController isDebugMode={isDebugMode} isStarted={appState === 'playing'}>
-                <Judy scale={0.8} />
+                {selectedCharacter === 'judy' ? <Judy scale={0.8} /> : <Nick scale={0.8} />}
               </CharacterController>
             </Physics>
           </Suspense>
