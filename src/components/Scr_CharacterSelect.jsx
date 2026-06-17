@@ -2,17 +2,23 @@ import React, { useState } from 'react';
 
 export default function Scr_CharacterSelect({ onSelect }) {
   const [isFading, setIsFading] = useState(false);
+  const [selectedCharacter, setSelectedCharacter] = useState(null);
 
   const handleSelect = (character) => {
+    setSelectedCharacter(character);
     setIsFading(true);
-    // 0.5초 페이드 아웃 후 메인 화면으로 선택된 캐릭터 정보를 전달합니다.
-    setTimeout(() => {
-      onSelect(character);
-    }, 500);
+  };
+
+  const handleTransitionEnd = () => {
+    if (isFading && selectedCharacter) {
+      onSelect(selectedCharacter);
+    }
   };
 
   return (
-    <div style={{
+    <div 
+      onTransitionEnd={handleTransitionEnd}
+      style={{
       position: 'absolute',
       top: 0,
       left: 0,
@@ -23,7 +29,7 @@ export default function Scr_CharacterSelect({ onSelect }) {
       justifyContent: 'center',
       alignItems: 'center',
       zIndex: 2000,
-      backgroundColor: 'rgba(255, 255, 255, 0.8)',
+      backgroundColor: 'rgba(255, 255, 255, 0.7)',
       backdropFilter: 'blur(8px)',
       opacity: isFading ? 0 : 1,
       transition: 'opacity 0.5s ease-in-out',

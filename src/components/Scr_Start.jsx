@@ -5,14 +5,19 @@ export default function Scr_Start({ onStart }) {
 
   const handleStart = () => {
     setIsFading(true); // 페이드 아웃 애니메이션 시작
-    // 애니메이션 지속 시간(0.5초)이 지난 후 App 컴포넌트의 onStart를 호출하여 완전히 화면에서 제거합니다.
-    setTimeout(() => {
+  };
+
+  const handleTransitionEnd = () => {
+    // 페이드 아웃 애니메이션이 끝났을 때만 onStart를 호출합니다.
+    if (isFading) {
       onStart();
-    }, 500);
+    }
   };
 
   return (
-    <div style={{
+    <div 
+      onTransitionEnd={handleTransitionEnd}
+      style={{
       position: 'absolute',
       top: 0,
       left: 0,

@@ -1,5 +1,6 @@
 import React, { useRef, useEffect } from 'react';
-import { useGLTF, useAnimations } from '@react-three/drei';
+import { useFrame } from '@react-three/fiber';
+import { useGLTF, useAnimations, useKeyboardControls } from '@react-three/drei';
 
 export default function Judy(props) {
   const group = useRef();
@@ -8,6 +9,10 @@ export default function Judy(props) {
   
   // 모델에 포함된 애니메이션들을 추출하여 제어할 수 있게 해주는 훅입니다.
   const { actions } = useAnimations(animations, group);
+
+  // 키보드 입력을 가져오기 위한 훅과 현재 재생 중인 애니메이션 상태를 저장할 ref를 선언합니다.
+  const [, get] = useKeyboardControls();
+  const currentAction = useRef('Idle');
 
   useEffect(() => {
     // 💡 브라우저 개발자 도구(F12) 콘솔에서 사용 가능한 애니메이션 목록을 확인합니다.
@@ -21,6 +26,26 @@ export default function Judy(props) {
       actions['Idle'].play();
     }
   }, [actions]);
+
+  // 매 프레임마다 키보드 입력을 확인하여 애니메이션을 전환합니다.
+  useFrame(() => {
+    const { forward, back, left, right } = get();
+    const isMoving = forward || back || left || right;
+    // 💡 모델에 따라 걷기 애니메이션 이름이 'Run' 혹은 'Walking'일 수 있습니다. 콘솔을 확인해 맞게 수정하세요.
+    const nextAction = isMoving ? 'Walk' : 'Idle'; 
+
+    if (currentAction.current !== nextAction) {
+      const currentAnim = actions[currentAction.current];
+      const nextAnim = actions[nextAction];
+
+      if (nextAnim) {
+        // 자연스러운 애니메이션 전환(블렌딩)을 위해 fadeIn, fadeOut을 사용합니다 (0.2초 설정)
+        nextAnim.reset().fadeIn(0.2).play();
+        if (currentAnim) currentAnim.fadeOut(0.2);
+        currentAction.current = nextAction;
+      }
+    }
+  });
 
   return (
     <group ref={group} {...props}>
