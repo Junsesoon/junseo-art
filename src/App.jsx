@@ -3,6 +3,7 @@ import { Canvas } from '@react-three/fiber';
 import { GizmoHelper, GizmoViewport, KeyboardControls } from '@react-three/drei';
 import { Physics } from '@react-three/rapier';
 import Judy from './components/Judy';
+import { EffectComposer, SMAA } from '@react-three/postprocessing';
 import Nick from './components/Nick';
 import Lambo from './components/Lambo';
 import CharacterController, { keyboardMap } from './physics/CharacterController';
@@ -118,11 +119,20 @@ export default function App() {
 
           {/* KeyboardControls로 Canvas를 감싸고, 위에서 정의한 key map을 전달합니다. */}
           <KeyboardControls map={keyboardMap}>
-            <Canvas shadows camera={{ fov: 60 }}>
+            <Canvas shadows camera={{ fov: 60 }} gl={{ antialias: false }}>
               {/* 전체적인 밝기를 담당하는 기본 조명 */}
               <ambientLight intensity={1.5} />
-              {/* 입체감과 그림자를 만들어주는 방향성 조명 */}
-              <directionalLight position={[1, 10, 5]} intensity={2} castShadow />
+              {/* 입체감과 그림자를 만들어주는 방향성 조명 (그림자 품질 및 영역 개선) */}
+              <directionalLight 
+                position={[1, 10, 5]} 
+                intensity={2} 
+                castShadow 
+                shadow-mapSize={[2048, 2048]} 
+                shadow-bias={-0.001}
+              >
+                {/* 그림자가 렌더링되는 카메라(빛)의 영역을 넓혀 맵 전체를 덮도록 합니다 [좌, 우, 상, 하, 근경, 원경] */}
+                <orthographicCamera attach="shadow-camera" args={[-20, 20, 20, -20, 0.1, 50]} />
+              </directionalLight>
 
               {/* Suspense는 내부 컴포넌트(모델 등)가 로드될 때까지 fallback을 보여줍니다. */}
               <Suspense fallback={null}>
@@ -135,8 +145,8 @@ export default function App() {
                       {/* 디버그 모드일 때만 표시되는 맵 측정/디버깅용 그리드 (바닥보다 살짝 위에 배치하여 겹침 방지) */}
                       {isDebugMode && <gridHelper args={[100, 100]} position={[0, 0.00001, 0]} />}
 
-                  {/* 캐릭터가 밟고 다닐 수 있는 100x100 기본 지면 (y위치를 -0.00001로 설정) */}
-                  <Ground position={[0, -0.00001, 0]} />
+                  {/* 캐릭터가 밟고 다닐 수 있는 100x100 기본 지면 */}
+                  <Ground position={[0, 0, 0]} />
 
                   {/* 맵 밖으로 추락하는 객체를 리셋해주는 전역 데스존 센서 */}
                   <Underground position={[0, -10, 0]} />
@@ -146,6 +156,12 @@ export default function App() {
                     {selectedCharacter === 'lambo' && <Lambo scale={0.8} />}
                   </CharacterController>
                 </Physics>
+
+                {/* 후처리 파이프라인 (안티 앨리어싱) */}
+                {/* SMAA 효과는 자체 에셋을 비동기 로드하므로, 반드시 Suspense 내부에 위치해야 합니다. */}
+                <EffectComposer multisampling={0}>
+                  <SMAA />
+                </EffectComposer>
               </Suspense>
 
               {isDebugMode && (

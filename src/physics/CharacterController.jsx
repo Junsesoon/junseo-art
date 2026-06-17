@@ -231,7 +231,12 @@ export default function CharacterController({ children, speed = 4, jumpHeight = 
     if (rotateRight) characterYaw.current -= currentLookSpeed * delta;
 
     // 카메라의 현재 회전각(yaw)을 캐릭터의 실제 회전각으로 부드럽게 보간(lerp)합니다.
-    rotation.current.yaw = THREE.MathUtils.lerp(rotation.current.yaw, characterYaw.current, delta * 10);
+    // 미세한 떨림(Jitter)을 방지하기 위해 각도 차이가 매우 작으면 목표값으로 스냅(Snap)합니다.
+    if (Math.abs(rotation.current.yaw - characterYaw.current) < 0.001) {
+      rotation.current.yaw = characterYaw.current;
+    } else {
+      rotation.current.yaw = THREE.MathUtils.lerp(rotation.current.yaw, characterYaw.current, delta * 10);
+    }
 
     // 캐릭터 모델의 Y축 회전을 실제 회전각과 동기화하여 부드럽게 회전시킵니다.
     character.current.rotation.y = characterYaw.current - Math.PI;
@@ -351,17 +356,28 @@ export default function CharacterController({ children, speed = 4, jumpHeight = 
     }
 
     // 목표 카메라 거리를 향해 현재 거리를 부드럽게 보간(lerp)합니다.
-    currentDistance.current = THREE.MathUtils.lerp(currentDistance.current, activeTargetDistance, delta * 5); // 부드러운 줌 효과를 위해 10 -> 5로 속도 조절
+    if (Math.abs(currentDistance.current - activeTargetDistance) < 0.001) {
+      currentDistance.current = activeTargetDistance;
+    } else {
+      currentDistance.current = THREE.MathUtils.lerp(currentDistance.current, activeTargetDistance, delta * 5);
+    }
     const distance = currentDistance.current;
 
     const offsetX = distance * Math.sin(rotation.current.yaw) * Math.cos(rotation.current.pitch);
     const offsetY = distance * Math.sin(rotation.current.pitch);
     const offsetZ = distance * Math.cos(rotation.current.yaw) * Math.cos(rotation.current.pitch);
 
-    const idealCameraPos = new THREE.Vector3(bodyPosition.x - offsetX, bodyPosition.y + 1.5 + offsetY, bodyPosition.z - offsetZ);
+    const idealCameraPos = new THREE.Vector3(bodyPosition.x - offsetX, bodyPosition.y + 5.0 + offsetY, bodyPosition.z - offsetZ);
 
-    state.camera.position.lerp(idealCameraPos, delta * 10);
-    const idealLookAt = new THREE.Vector3(bodyPosition.x, bodyPosition.y + 1, bodyPosition.z);
+    // 카메라 위치 스냅 (Sub-pixel Jitter 방지)
+    // 목표 위치와의 거리 제곱이 매우 작아지면 lerp를 멈추고 바로 목표 위치로 강제 고정합니다.
+    if (state.camera.position.distanceToSquared(idealCameraPos) < 0.0001) {
+      state.camera.position.copy(idealCameraPos);
+    } else {
+      state.camera.position.lerp(idealCameraPos, delta * 10);
+    }
+
+    const idealLookAt = new THREE.Vector3(bodyPosition.x, bodyPosition.y + 0.5, bodyPosition.z);
     
     // 첫 프레임에서 카메라가 엉뚱한 곳을 보며 튀는 것을 방지
     if (cameraTarget.current.lengthSq() === 0) {
@@ -369,7 +385,11 @@ export default function CharacterController({ children, speed = 4, jumpHeight = 
     }
     
     // 카메라의 위치가 부드럽게 이동하듯, 카메라가 바라보는 목표 지점도 부드럽게 이동시킵니다.
-    cameraTarget.current.lerp(idealLookAt, delta * 10);
+    if (cameraTarget.current.distanceToSquared(idealLookAt) < 0.0001) {
+      cameraTarget.current.copy(idealLookAt);
+    } else {
+      cameraTarget.current.lerp(idealLookAt, delta * 10);
+    }
     state.camera.lookAt(cameraTarget.current);
   });
 
