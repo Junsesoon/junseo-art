@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-export default function StartScreen({ onStart }) {
+export default function Scr_Start({ onStart }) {
   const [isFading, setIsFading] = useState(false);
 
   const handleStart = () => {
@@ -22,7 +22,7 @@ export default function StartScreen({ onStart }) {
       justifyContent: 'center',
       alignItems: 'center',
       zIndex: 2000,
-      backgroundColor: 'rgba(255, 255, 255, 0.7)', // 반투명 배경
+      backgroundColor: 'rgba(255, 255, 255, 1)', // 불투명 배경
       backdropFilter: 'blur(4px)', // 배경 블러 효과
       opacity: isFading ? 0 : 1, // 페이드 아웃 상태에 따른 투명도 조절
       transition: 'opacity 0.5s ease-in-out', // 0.5초 동안 부드럽게 투명도 변경
