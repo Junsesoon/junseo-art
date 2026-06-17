@@ -32,6 +32,12 @@ files.forEach(file => {
   const basename = path.basename(file, ext); // 파일명 추출 (room-3m)
   const outputFile = path.join(OUTPUT_DIR, `${basename}-opt${ext}`); // room-3m-opt.glb
 
+  // 이미 최적화된 파일이 존재하면 압축을 건너뜁니다.
+  if (fs.existsSync(outputFile)) {
+    console.log(`⏩ 이미 압축된 파일이 존재하여 건너뜁니다: ${file}`);
+    return;
+  }
+
   console.log(`\n⏳ 변환 중: ${file} ...`);
   
   try {
