@@ -11,11 +11,15 @@ import Floor from './components/Floor';
 export default function App() {
   // 키보드 컨트롤을 위한 맵을 정의합니다.
   const map = useMemo(() => [
-    { name: Controls.forward, keys: ['ArrowUp', 'KeyW'] },
-    { name: Controls.back, keys: ['ArrowDown', 'KeyS'] },
-    { name: Controls.left, keys: ['ArrowLeft', 'KeyA'] },
-    { name: Controls.right, keys: ['ArrowRight', 'KeyD'] },
+    // 이동 (W, Q, S, E)
+    { name: Controls.forward, keys: ['KeyW'] },
+    { name: Controls.back, keys: ['KeyS'] },
+    { name: Controls.left, keys: ['KeyQ'] },
+    { name: Controls.right, keys: ['KeyE'] },
     { name: Controls.jump, keys: ['Space'] }, // 불필요한 'KeySpace' 값 제거
+    // 화면 회전 (A, D)
+    { name: Controls.rotateLeft, keys: ['KeyA'] },
+    { name: Controls.rotateRight, keys: ['KeyD'] },
   ], []);
 
   // 디버그 모드 상태 (현재는 기능 없이 UI 토글용으로만 사용)

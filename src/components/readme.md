@@ -7,4 +7,4 @@
 # files
 * `Room.jsx`: 최적화된 방 3D 모델(`room-opt.glb`)을 비동기적으로 불러와 화면에 렌더링하는 예시용 컴포넌트
 * `Judy.jsx`: Judy 캐릭터 모델(`judy_police.glb`)을 불러오고 대기(Idle) 애니메이션을 재생하여 렌더링하는 캐릭터 컴포넌트
-* `Move.jsx`: 자식 요소(3D 모델)를 감싸 WASD 키보드 입력 및 마우스 움직임에 따라 3D 공간 안에서 이동할 수 있게 해주는 공통 래퍼(Wrapper) 컴포넌트
+* `Floor.jsx`: `type` 속성에 따라 동적으로 타일 모델(`tile{type}-opt.glb`)을 불러오며, 맵 곳곳에 반복 배치할 수 있도록 `<Clone>`을 사용해 메모리를 최적화한 바닥 물리 컴포넌트

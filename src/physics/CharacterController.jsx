@@ -11,6 +11,8 @@ export const Controls = {
   left: 'left',
   right: 'right',
   jump: 'jump',
+  rotateLeft: 'rotateLeft',
+  rotateRight: 'rotateRight',
 };
 
 export default function CharacterController({ children, speed = 4, jumpHeight = 0.4, isDebugMode, ...props }) {
@@ -58,47 +60,29 @@ export default function CharacterController({ children, speed = 4, jumpHeight = 
 
   // 마우스 회전(시점) 상태를 저장할 참조 객체입니다.
   const rotation = useRef({ yaw: Math.PI, pitch: 0 }); // 초기 yaw를 PI로 설정하여 캐릭터의 뒷모습에서 시작
+  const characterYaw = useRef(Math.PI); // 캐릭터의 실제 연속 회전값
 
   // 점프 키 입력을 감지하기 위한 플래그 (누르는 순간만 반응하도록)
   const jumpPressed = useRef(false);
   const wasGrounded = useRef(false); // 이전 접지 상태를 저장하기 위한 ref
   const cameraTarget = useRef(new THREE.Vector3()); // 카메라 시점(LookAt)을 부드럽게 만들기 위한 보간용 벡터
 
-  // 마우스 컨트롤 및 포인터 락 설정
+  // --- 단발성 키 입력 감지 (점프) ---
   useEffect(() => {
-    const handleCanvasClick = () => gl.domElement.requestPointerLock();
-    const handleMouseMove = (e) => {
-      if (document.pointerLockElement === gl.domElement) {
-        rotation.current.yaw -= e.movementX * 0.002;
-        rotation.current.pitch += e.movementY * 0.002;
-        // 상하 시야각 제한
-        const minPitch = -15 * (Math.PI / 180); // 지평선 아래 -15도
-        rotation.current.pitch = Math.max(minPitch, Math.min(Math.PI / 2 - 0.2, rotation.current.pitch));
-      }
-    };
-    gl.domElement.addEventListener('click', handleCanvasClick);
-    document.addEventListener('mousemove', handleMouseMove);
-    return () => {
-      gl.domElement.removeEventListener('click', handleCanvasClick);
-      document.removeEventListener('mousemove', handleMouseMove);
-    };
-  }, [gl]);
-
-  // --- 점프 키 입력 감지: 키를 누르는 순간만 반응 ---
-  // 이전 상태와 현재 상태를 비교하여 false → true 전환 시에만 점프 플래그를 설정합니다.
-  useEffect(() => {
-    return sub(
+    const unsubJump = sub(
       (state) => state.jump,
       (pressed) => {
         if (pressed && !jumpPressed.current) {
-          // false → true로 변경 (누르기 시작)
           jumpPressed.current = true;
         } else if (!pressed) {
-          // true → false로 변경 (떼기)
           jumpPressed.current = false;
         }
       }
     );
+
+    return () => {
+      unsubJump();
+    };
   }, [sub]);
 
   useFrame((state, delta) => {
@@ -113,8 +97,19 @@ export default function CharacterController({ children, speed = 4, jumpHeight = 
     }
 
     // --- 1. 키 입력 및 방향 계산 ---
-    const { forward, back, left, right } = get();
+    const { forward, back, left, right, rotateLeft, rotateRight } = get();
     const velocity = body.current.linvel();
+
+    // --- 시점(카메라 및 캐릭터) 회전 로직 (Q/E 키 입력) ---
+    const lookSpeed = 2.0; // 시점 회전 속도 (필요시 조절)
+    if (rotateLeft) characterYaw.current += lookSpeed * delta;
+    if (rotateRight) characterYaw.current -= lookSpeed * delta;
+
+    // 2. 카메라의 현재 회전각(rotation.yaw)을 캐릭터의 실제 회전각(characterYaw)으로 부드럽게 보간(lerp)하여 연속적으로 회전시킵니다.
+    rotation.current.yaw = THREE.MathUtils.lerp(rotation.current.yaw, characterYaw.current, delta * 10);
+
+    // 4. 캐릭터 모델의 Y축 회전을 실제 회전각(characterYaw)과 동기화하여 부드럽게 회전시킵니다.
+    character.current.rotation.y = characterYaw.current - Math.PI;
 
     // 카메라의 y축 회전(yaw)을 기준으로 방향 벡터를 계산합니다.
     const cameraYaw = new THREE.Euler(0, rotation.current.yaw, 0, 'YXZ');
@@ -173,11 +168,6 @@ export default function CharacterController({ children, speed = 4, jumpHeight = 
     if (jumpPressed.current) {
       jumpPressed.current = false;
     }
-
-    // --- 4. 캐릭터 모델 회전 (FPS 스타일) ---
-    // 캐릭터의 Y축 회전을 카메라의 Y축 회전(yaw)과 일치시켜, 항상 마우스 방향을 바라보게 합니다.
-    // Judy 모델 자체에 적용된 보정 회전값(PI)을 상쇄하기 위해 PI를 빼줍니다.
-    character.current.rotation.y = rotation.current.yaw - Math.PI;
 
     // --- 5. 3인칭 카메라 위치 업데이트 (구면 좌표계) ---
     const distance = 5;
