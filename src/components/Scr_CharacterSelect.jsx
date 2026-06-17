@@ -41,13 +41,13 @@ export default function Scr_CharacterSelect({ onSelect }) {
         {/* 쥬디 캐릭터 선택 카드 */}
         <div 
           onClick={() => handleSelect('judy')}
-          onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-10px)'; e.currentTarget.style.boxShadow = '0 12px 24px rgba(76, 175, 80, 0.3)'; e.currentTarget.style.border = '3px solid #4CAF50'; }}
+          onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-10px)'; e.currentTarget.style.boxShadow = '0 12px 24px rgba(255, 128, 171, 0.4), 0 0 15px rgba(255, 128, 171, 0.6)'; e.currentTarget.style.border = '3px solid #FF80AB'; }}
           onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.1)'; e.currentTarget.style.border = '3px solid transparent'; }}
           style={{ width: '220px', height: '320px', backgroundColor: 'white', borderRadius: '20px', boxShadow: '0 8px 16px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.3s ease', border: '3px solid transparent' }}
         >
           <div style={{ fontSize: '72px', marginBottom: '20px' }}>🐰</div>
           <h2 style={{ margin: 0, color: '#333', fontSize: '24px' }}>쥬디(Judy)</h2>
-          <p style={{ color: '#666', marginTop: '12px', fontWeight: 'bold' }}>경찰 캐릭터</p>
+          <p style={{ color: '#666', marginTop: '12px', fontWeight: 'bold' }}>토끼 캐릭터</p>
         </div>
 
         {/* 닉 캐릭터 선택 카드 */}
@@ -62,15 +62,16 @@ export default function Scr_CharacterSelect({ onSelect }) {
           <p style={{ color: '#666', marginTop: '12px', fontWeight: 'bold' }}>여우 캐릭터</p>
         </div>
 
-        {/* 업데이트 예정 카드 (선택 불가) */}
+        {/* 람보르기니 선택 카드 (현재 UI만 구현됨) */}
         <div 
-          style={{
-            width: '220px', height: '320px', backgroundColor: '#f5f5f5', borderRadius: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#aaa', border: '3px dashed #ddd', cursor: 'not-allowed'
-          }}
+          onClick={() => handleSelect('lambo')}
+          onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-10px)'; e.currentTarget.style.boxShadow = '0 12px 24px rgba(33, 150, 243, 0.4), 0 0 15px rgba(33, 150, 243, 0.6)'; e.currentTarget.style.border = '3px solid #2196F3'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.1)'; e.currentTarget.style.border = '3px solid transparent'; }}
+          style={{ width: '220px', height: '320px', backgroundColor: 'white', borderRadius: '20px', boxShadow: '0 8px 16px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.3s ease', border: '3px solid transparent' }}
         >
-          <div style={{ fontSize: '64px', marginBottom: '20px', opacity: 0.5 }}>🔒</div>
-          <h2 style={{ margin: 0, fontSize: '24px' }}>준비 중</h2>
-          <p style={{ marginTop: '12px', fontSize: '14px' }}>업데이트 예정</p>
+          <div style={{ fontSize: '72px', marginBottom: '20px' }}>🛣️</div>
+          <h2 style={{ margin: 0, color: '#333', fontSize: '24px' }}>람보르기니</h2>
+          <p style={{ color: '#666', marginTop: '12px', fontWeight: 'bold' }}>스포츠카</p>
         </div>
       </div>
     </div>

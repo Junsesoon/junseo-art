@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState, useLayoutEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { useRapier, RigidBody, CapsuleCollider } from '@react-three/rapier';
+import { useRapier, RigidBody, CapsuleCollider, CuboidCollider } from '@react-three/rapier';
 import { useKeyboardControls } from '@react-three/drei';
 import * as THREE from 'three';
 
@@ -25,8 +25,9 @@ export default function CharacterController({ children, speed = 4, jumpHeight = 
 
   // 콜라이더의 크기와 모델의 위치를 동적으로 설정하기 위한 상태
   const [colliderProps, setColliderProps] = useState({
-    args: [0.4, 0.4], // 초기값: [반높이, 반지름]
-    offset: -0.8, // 초기값: -(반높이 + 반지름)
+    type: 'capsule', // 'capsule' 또는 'cuboid'
+    args: [0.4, 0.4], // 초기값: [반높이, 반지름] 또는 [x, y, z]
+    offset: -0.8, // 모델의 Y축 오프셋
   });
 
   // 캐릭터 모델의 크기를 측정하여 콜라이더를 자동으로 맞추는 로직
@@ -34,8 +35,9 @@ export default function CharacterController({ children, speed = 4, jumpHeight = 
     if (character.current) {
       // 모델이 로드될 때까지 기다립니다.
       const model = character.current.children[0];
-      if (model) {
-        // --- 수정: 정확한 바운딩 박스 측정을 위한 로직 ---
+      // 💡 children이 유효한 리액트 엘리먼트가 아닐 경우(false 등) .type 접근 에러가 발생하므로,
+      //    React.isValidElement로 방어 코드를 추가합니다.
+      if (model && React.isValidElement(children)) {
         // 부모(RigidBody 등)의 위치나 이전 렌더링에서 적용된 offset의 영향을 받지 않도록
         // 잠시 부모와의 연결을 끊고 순수한 모델만의 Transform(scale 등)을 기준으로 측정합니다.
         const parent = model.parent;
@@ -44,17 +46,33 @@ export default function CharacterController({ children, speed = 4, jumpHeight = 
 
         const box = new THREE.Box3().setFromObject(model);
         const size = box.getSize(new THREE.Vector3());
-        const height = size.y;
-        const radius = (size.x + size.z) / 4; // 너비와 깊이의 평균으로 반지름 추정
-        const halfHeight = Math.max(0, height / 2 - radius);
+        const bottomY = box.min.y;
 
         // 측정 후 다시 원래 부모에게 복구합니다.
         model.parent = parent;
 
-        // 콜라이더의 바닥은 중심 기준 -(halfHeight + radius) 입니다.
-        // 모델의 실제 바닥 지점(box.min.y)이 콜라이더 바닥에 정확히 일치하도록 offset을 보정합니다.
-        const bottomY = box.min.y;
-        setColliderProps({ args: [halfHeight, radius], offset: -(halfHeight + radius) - bottomY });
+        // 자식 컴포넌트의 이름(Lambo)을 확인하여 콜라이더 타입을 결정합니다.
+        if (children.type.name === 'Lambo') {
+          // 차량 모델의 경우, Box 형태의 CuboidCollider를 사용합니다.
+          const halfSize = size.clone().multiplyScalar(0.5);
+          setColliderProps({
+            type: 'cuboid',
+            args: [halfSize.x, halfSize.y, halfSize.z],
+            // 콜라이더의 중심이 모델의 중심에 오도록 offset을 조정합니다.
+            offset: -bottomY - halfSize.y,
+          });
+        } else {
+          // 사람 캐릭터의 경우, CapsuleCollider를 사용합니다.
+          const height = size.y;
+          const radius = (size.x + size.z) / 4; // 너비와 깊이의 평균으로 반지름 추정
+          const halfHeight = Math.max(0, height / 2 - radius);
+          
+          setColliderProps({
+            type: 'capsule',
+            args: [halfHeight, radius],
+            offset: -(halfHeight + radius) - bottomY,
+          });
+        }
       }
     }
   }, [children]); // 자식 모델이 변경될 때마다 재계산
@@ -146,14 +164,20 @@ export default function CharacterController({ children, speed = 4, jumpHeight = 
       .applyEuler(cameraYaw);
 
     // --- 2. 접지 확인 (Raycasting) ---
-    const [halfHeight, radius] = colliderProps.args;
-    // 리지드바디의 중심에서 캡슐 콜라이더의 가장 아래쪽까지의 거리
-    const capsuleBottomDistance = halfHeight + radius;
+    let raycastStartOffset = 0;
+    if (colliderProps.type === 'capsule') {
+      const [halfHeight, radius] = colliderProps.args;
+      // 캡슐 콜라이더의 가장 아래쪽까지의 거리
+      raycastStartOffset = halfHeight + radius;
+    } else {
+      // 큐브 콜라이더의 가장 아래쪽까지의 거리
+      raycastStartOffset = colliderProps.args[1]; // halfSize.y
+    }
     
     // 💡 캐릭터의 콜라이더를 완벽히 피하기 위해, 레이의 시작점을 발끝보다 아주 살짝(-0.01) 아래로 내립니다.
     const rayOrigin = {
       x: bodyPosition.x,
-      y: bodyPosition.y - capsuleBottomDistance - 0.01,
+      y: bodyPosition.y - raycastStartOffset - 0.01,
       z: bodyPosition.z
     };
     const ray = new rapier.Ray(rayOrigin, { x: 0, y: -1, z: 0 });
@@ -236,14 +260,15 @@ export default function CharacterController({ children, speed = 4, jumpHeight = 
   return (
     <RigidBody
       ref={body}
-      colliders={false}
+      colliders={colliderProps.type === 'cuboid' ? 'hull' : false}
       mass={1}
       type="dynamic"
       position={[0, 3, 0]}
       enabledRotations={[false, false, false]}
       {...props}
     >
-      <CapsuleCollider args={colliderProps.args} />
+      {/* 사람 캐릭터일 경우에만 캡슐 콜라이더를 수동으로 추가합니다. */}
+      {colliderProps.type === 'capsule' && <CapsuleCollider args={colliderProps.args} />}
       <group ref={character} position={[0, colliderProps.offset, 0]}>
         {children}
       </group>
