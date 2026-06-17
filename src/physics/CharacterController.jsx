@@ -13,6 +13,7 @@ export const Controls = {
   jump: 'jump',
   rotateLeft: 'rotateLeft',
   rotateRight: 'rotateRight',
+  run: 'run',
 };
 
 export default function CharacterController({ children, speed = 4, jumpHeight = 0.4, isDebugMode, isStarted = true, ...props }) {
@@ -67,6 +68,10 @@ export default function CharacterController({ children, speed = 4, jumpHeight = 
   const wasGrounded = useRef(false); // 이전 접지 상태를 저장하기 위한 ref
   const cameraTarget = useRef(new THREE.Vector3()); // 카메라 시점(LookAt)을 부드럽게 만들기 위한 보간용 벡터
 
+  // 카메라 줌(거리) 상태를 관리하기 위한 ref
+  const targetDistance = useRef(5);
+  const currentDistance = useRef(5);
+
   // --- 단발성 키 입력 감지 (점프) ---
   useEffect(() => {
     const unsubJump = sub(
@@ -85,6 +90,23 @@ export default function CharacterController({ children, speed = 4, jumpHeight = 
     };
   }, [sub]);
 
+  // --- 마우스 휠 줌인/아웃 (카메라 거리 조절) ---
+  useEffect(() => {
+    const handleWheel = (e) => {
+      // 휠을 굴리는 방향에 따라 목표 거리를 증감시킵니다.
+      const zoomSpeed = 0.005; 
+      let newDist = targetDistance.current + e.deltaY * zoomSpeed;
+      // 카메라가 캐릭터를 파고들거나 너무 멀어지지 않도록 거리를 2~10 사이로 제한(Clamp)합니다.
+      targetDistance.current = Math.max(2, Math.min(10, newDist));
+    };
+
+    const canvasEl = gl.domElement;
+    canvasEl.addEventListener('wheel', handleWheel, { passive: true });
+    return () => {
+      canvasEl.removeEventListener('wheel', handleWheel);
+    };
+  }, [gl.domElement]);
+
   useFrame((state, delta) => {
     if (!body.current || !character.current) return;
 
@@ -98,7 +120,7 @@ export default function CharacterController({ children, speed = 4, jumpHeight = 
 
     // --- 1. 키 입력 및 방향 계산 ---
     // 게임 시작 전(!isStarted)에는 입력을 무시하도록 빈 객체를 반환합니다.
-    const { forward, back, left, right, rotateLeft, rotateRight } = isStarted ? get() : {};
+    const { forward, back, left, right, rotateLeft, rotateRight, run } = isStarted ? get() : {};
     const velocity = body.current.linvel();
 
     // --- 시점(카메라 및 캐릭터) 회전 로직 (Q/E 키 입력) ---
@@ -166,8 +188,11 @@ export default function CharacterController({ children, speed = 4, jumpHeight = 
     // --- 3. 이동 및 점프 속도 일괄 적용 ---
     // 점프 플래그가 설정되고 땅에 닿아있다면 점프 속도를 적용합니다.
     // jumpPressed는 누르는 순간만 true이므로 안정적인 1회 점프를 보장합니다.
+    
+    // Shift 키를 누르고 있으면 기본 속도의 1.8배로 달립니다.
+    const currentSpeed = run ? speed * 1.8 : speed;
     const targetVelocityY = (isStarted && jumpPressed.current && isGrounded) ? speed * jumpHeight * 2.5 : velocity.y;
-    const newVel = new THREE.Vector3(moveDirection.x * speed, targetVelocityY, moveDirection.z * speed);
+    const newVel = new THREE.Vector3(moveDirection.x * currentSpeed, targetVelocityY, moveDirection.z * currentSpeed);
     body.current.setLinvel(newVel, true);
     
     // 점프 적용 후 플래그를 초기화하여 다음 누르기를 대기합니다.
@@ -176,7 +201,18 @@ export default function CharacterController({ children, speed = 4, jumpHeight = 
     }
 
     // --- 5. 3인칭 카메라 위치 업데이트 (구면 좌표계) ---
-    const distance = 5;
+    // 달리기 상태(Shift)이고 실제로 이동 중일 때 카메라를 약간 뒤로(줌 아웃) 뺍니다.
+    const isMoving = forward || back || left || right;
+    let activeTargetDistance = targetDistance.current;
+    if (run && isMoving) {
+      // 뒤로 달릴 때는 캐릭터가 화면에 가까워지므로, 카메라를 살짝 당겨(줌 인) 답답함을 해소하고
+      // 앞으로 달릴 때는 속도감을 위해 카메라를 뒤로 빼(줌 아웃) 역동적인 효과를 줍니다.
+      activeTargetDistance = back ? targetDistance.current - 1.0 : targetDistance.current + 1.5;
+    }
+
+    // 목표 카메라 거리를 향해 현재 거리를 부드럽게 보간(lerp)합니다.
+    currentDistance.current = THREE.MathUtils.lerp(currentDistance.current, activeTargetDistance, delta * 5); // 부드러운 줌 효과를 위해 10 -> 5로 속도 조절
+    const distance = currentDistance.current;
 
     const offsetX = distance * Math.sin(rotation.current.yaw) * Math.cos(rotation.current.pitch);
     const offsetY = distance * Math.sin(rotation.current.pitch);

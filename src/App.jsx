@@ -20,6 +20,8 @@ export default function App() {
     { name: Controls.left, keys: ['KeyQ'] },
     { name: Controls.right, keys: ['KeyE'] },
     { name: Controls.jump, keys: ['Space'] }, // 불필요한 'KeySpace' 값 제거
+    // 달리기 (Shift)
+    { name: Controls.run, keys: ['ShiftLeft', 'ShiftRight'] },
     // 화면 회전 (A, D)
     { name: Controls.rotateLeft, keys: ['KeyA'] },
     { name: Controls.rotateRight, keys: ['KeyD'] },
