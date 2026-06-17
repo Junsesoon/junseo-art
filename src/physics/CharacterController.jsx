@@ -15,7 +15,7 @@ export const Controls = {
   rotateRight: 'rotateRight',
 };
 
-export default function CharacterController({ children, speed = 4, jumpHeight = 0.4, isDebugMode, ...props }) {
+export default function CharacterController({ children, speed = 4, jumpHeight = 0.4, isDebugMode, isStarted = true, ...props }) {
   const body = useRef();
   const character = useRef(); // 캐릭터 모델을 감싸는 group의 ref
   const { rapier, world } = useRapier();
@@ -97,7 +97,8 @@ export default function CharacterController({ children, speed = 4, jumpHeight = 
     }
 
     // --- 1. 키 입력 및 방향 계산 ---
-    const { forward, back, left, right, rotateLeft, rotateRight } = get();
+    // 게임 시작 전(!isStarted)에는 입력을 무시하도록 빈 객체를 반환합니다.
+    const { forward, back, left, right, rotateLeft, rotateRight } = isStarted ? get() : {};
     const velocity = body.current.linvel();
 
     // --- 시점(카메라 및 캐릭터) 회전 로직 (Q/E 키 입력) ---
@@ -160,7 +161,7 @@ export default function CharacterController({ children, speed = 4, jumpHeight = 
     // --- 3. 이동 및 점프 속도 일괄 적용 ---
     // 점프 플래그가 설정되고 땅에 닿아있다면 점프 속도를 적용합니다.
     // jumpPressed는 누르는 순간만 true이므로 안정적인 1회 점프를 보장합니다.
-    const targetVelocityY = (jumpPressed.current && isGrounded) ? speed * jumpHeight * 2.5 : velocity.y;
+    const targetVelocityY = (isStarted && jumpPressed.current && isGrounded) ? speed * jumpHeight * 2.5 : velocity.y;
     const newVel = new THREE.Vector3(moveDirection.x * speed, targetVelocityY, moveDirection.z * speed);
     body.current.setLinvel(newVel, true);
     

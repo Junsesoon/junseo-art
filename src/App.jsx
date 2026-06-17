@@ -7,6 +7,7 @@ import Judy from './components/Judy';
 import CharacterController, { Controls } from './physics/CharacterController';
 import Underground from './physics/Underground';
 import Floor from './components/Floor';
+import StartScreen from './components/StartScreen';
 
 export default function App() {
   // 키보드 컨트롤을 위한 맵을 정의합니다.
@@ -25,8 +26,14 @@ export default function App() {
   // 디버그 모드 상태 (현재는 기능 없이 UI 토글용으로만 사용)
   const [isDebugMode, setIsDebugMode] = useState(false);
 
+  // 게임 시작 상태 관리
+  const [isStarted, setIsStarted] = useState(false);
+
   return (
     <div style={{ width: '100vw', height: '100vh', backgroundColor: '#f0f0f0' }}>
+      {/* 시작 화면 렌더링 (isStarted가 false일 때만 표시) */}
+      {!isStarted && <StartScreen onStart={() => setIsStarted(true)} />}
+
       {/* UI 영역 (Canvas 위에 절대 위치로 띄움) */}
       <div style={{ position: 'absolute', top: 20, left: 20, zIndex: 1000, display: 'flex', flexDirection: 'column', gap: '10px' }}>
         <button
@@ -75,7 +82,8 @@ export default function App() {
 
           {/* Suspense는 내부 컴포넌트(모델 등)가 로드될 때까지 fallback을 보여줍니다. */}
           <Suspense fallback={null}>
-            <Physics debug={isDebugMode}>
+            {/* 시작하기 전에는 Physics(물리 엔진)를 정지하여 중력 및 충돌 연산을 멈춥니다. */}
+            <Physics debug={isDebugMode} paused={!isStarted}>
               <Room position={[0, -1, 0]} />
                   
                   {/* 바닥 타일 테스트 배치 */}
@@ -86,7 +94,7 @@ export default function App() {
 
               {/* 맵 밖으로 추락하는 객체를 리셋해주는 전역 데스존 센서 */}
               <Underground position={[0, -10, 0]} />
-              <CharacterController isDebugMode={isDebugMode}>
+              <CharacterController isDebugMode={isDebugMode} isStarted={isStarted}>
                 <Judy scale={0.8} />
               </CharacterController>
             </Physics>
