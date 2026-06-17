@@ -11,12 +11,28 @@ export const Controls = {
   left: 'left',
   right: 'right',
   jump: 'jump',
+  down: 'down',
   rotateLeft: 'rotateLeft',
   rotateRight: 'rotateRight',
   run: 'run',
 };
 
-export default function CharacterController({ children, speed = 4, jumpHeight = 0.4, isDebugMode, isStarted = true, ...props }) {
+// 키보드 컨트롤을 위한 맵을 정의합니다.
+// App.jsx에서 KeyboardControls 컴포넌트에 전달하여 사용합니다.
+export const keyboardMap = [
+  // 이동 (W, Q, S, E)
+  { name: Controls.forward, keys: ['KeyW'] },
+  { name: Controls.back, keys: ['KeyS'] },
+  { name: Controls.left, keys: ['KeyQ'] }, // 좌측 이동 (스트레이프)
+  { name: Controls.right, keys: ['KeyE'] }, // 우측 이동 (스트레이프)
+  { name: Controls.jump, keys: ['Space'] },
+  { name: Controls.down, keys: ['ControlLeft', 'ControlRight'] }, // 하강 (Ctrl)
+  { name: Controls.run, keys: ['ShiftLeft', 'ShiftRight'] }, // 달리기 (Shift)
+  { name: Controls.rotateLeft, keys: ['KeyA'] }, // 시점 회전 (좌)
+  { name: Controls.rotateRight, keys: ['KeyD'] }, // 시점 회전 (우)
+];
+
+export default function CharacterController({ children, speed = 4, jumpHeight = 0.4, isDebugMode, isStarted = true, gravityMode = 'default', ...props }) {
   const body = useRef();
   const character = useRef(); // 캐릭터 모델을 감싸는 group의 ref
   const { rapier, world } = useRapier();
@@ -90,22 +106,92 @@ export default function CharacterController({ children, speed = 4, jumpHeight = 
   const targetDistance = useRef(5);
   const currentDistance = useRef(5);
 
-  // --- 단발성 키 입력 감지 (점프) ---
+  // 무중력 모드에서 사용할 이동 방향 토글 상태
+  const toggledMove = useRef({ forward: false, back: false, left: false, right: false, jump: false, down: false });
+  const holdToReverseTimeout = useRef({}); // 반대키 홀드->방향전환을 위한 타이머 ref
+  const potentialStop = useRef({}); // 같은 방향키 탭->정지를 위한 상태 ref
+
+  // --- 브라우저 기본 단축키 방지 ---
   useEffect(() => {
-    const unsubJump = sub(
-      (state) => state.jump,
-      (pressed) => {
-        // 누르는 순간의 정확한 시간을 기록합니다. (점프 선입력 기능 활용)
-        if (pressed) {
+    const preventBrowserShortcuts = (e) => {
+      // Ctrl 키와 게임 조작키(W, A, S, D, Q, E)를 함께 누를 때 발생하는 브라우저 기본 동작(북마크 추가 등)을 막습니다.
+      if (e.ctrlKey && ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyQ', 'KeyE'].includes(e.code)) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('keydown', preventBrowserShortcuts);
+    return () => window.removeEventListener('keydown', preventBrowserShortcuts);
+  }, []);
+
+  // --- 키 입력 처리 (점프 선입력 및 무중력 토글) ---
+  useEffect(() => {
+    // 이 효과는 중력 모드가 변경될 때마다 키 입력 방식을 전환합니다.
+    const handleKeyPress = (key, pressed, oppositeKey) => {
+      // 일반 중력 모드 처리
+      if (gravityMode !== 'none') {
+        if (key === 'jump' && pressed) {
           jumpPressedTime.current = performance.now();
         }
+        return;
       }
-    );
+
+      // --- 무중력 모드 처리 ---
+      if (pressed) {
+        const isCurrentMoving = toggledMove.current[key];
+        if (oppositeKey && toggledMove.current[oppositeKey]) {
+          // Case 1: 반대 방향으로 이동 중일 때 -> '정지 후 방향 전환' 로직
+          // 즉시 반대 방향 움직임을 멈춥니다.
+          toggledMove.current[oppositeKey] = false;
+          // 타이머를 설정하여, 키를 계속 누르고 있으면(hold) 현재 방향으로 이동을 시작합니다.
+          holdToReverseTimeout.current[key] = setTimeout(() => {
+            toggledMove.current[key] = true;
+            delete holdToReverseTimeout.current[key];
+          }, 150); // 홀드 판정 시간 (ms)
+        } else if (isCurrentMoving) {
+          // Case 2: 같은 방향으로 이미 이동 중일 때 -> '탭하여 정지' 로직
+          // 키를 누른 시간을 기록하여, 키를 뗄 때 탭인지 홀드인지 판단합니다.
+          potentialStop.current[key] = performance.now();
+        } else {
+          // Case 3: 정지 상태에서 -> 즉시 이동 시작
+          toggledMove.current[key] = true;
+        }
+      } else {
+        // 키를 뗀 경우
+        // 1. '홀드하여 방향 전환' 타이머가 있다면 취소합니다. (반대키 탭)
+        if (holdToReverseTimeout.current[key]) {
+          clearTimeout(holdToReverseTimeout.current[key]);
+          delete holdToReverseTimeout.current[key];
+        }
+        // 2. '탭하여 정지' 상태였다면, 누른 시간을 계산하여 정지 여부를 결정합니다.
+        if (potentialStop.current[key]) {
+          const pressDuration = performance.now() - potentialStop.current[key];
+          if (pressDuration < 150) { // 0.15초 미만으로 눌렀다 뗐다면 (탭)
+            toggledMove.current[key] = false; // 이동을 멈춥니다.
+          }
+          // 홀드였다면 아무것도 하지 않아 이동이 유지됩니다.
+          delete potentialStop.current[key];
+        }
+      }
+    };
+
+    const unsubForward = sub((state) => state.forward, (p) => handleKeyPress('forward', p, 'back'));
+    const unsubBack = sub((state) => state.back, (p) => handleKeyPress('back', p, 'forward'));
+    const unsubLeft = sub((state) => state.left, (p) => handleKeyPress('left', p, 'right'));
+    const unsubRight = sub((state) => state.right, (p) => handleKeyPress('right', p, 'left'));
+    const unsubJump = sub((state) => state.jump, (p) => handleKeyPress('jump', p, 'down'));
+    const unsubDown = sub((state) => state.down, (p) => handleKeyPress('down', p, 'jump'));
 
     return () => {
-      unsubJump();
+      [unsubForward, unsubBack, unsubLeft, unsubRight, unsubJump, unsubDown].forEach((unsub) => unsub());
+      // 모드가 변경될 때 모든 토글 상태와 타이머를 초기화합니다.
+      Object.keys(toggledMove.current).forEach(key => {
+        toggledMove.current[key] = false;
+      });
+      Object.values(holdToReverseTimeout.current).forEach(clearTimeout);
+      holdToReverseTimeout.current = {};
+      potentialStop.current = {};
     };
-  }, [sub]);
+  }, [sub, gravityMode]);
 
   // --- 마우스 휠 줌인/아웃 (카메라 거리 조절) ---
   useEffect(() => {
@@ -131,10 +217,10 @@ export default function CharacterController({ children, speed = 4, jumpHeight = 
 
     // --- 1. 키 입력 및 방향 계산 ---
     // 게임 시작 전(!isStarted)에는 입력을 무시하도록 빈 객체를 반환합니다.
-    const { forward, back, left, right, rotateLeft, rotateRight, run } = isStarted ? get() : {};
+    const { forward, back, left, right, down, jump, rotateLeft, rotateRight, run } = isStarted ? get() : {};
     const velocity = body.current.linvel();
 
-    // --- 시점(카메라 및 캐릭터) 회전 로직 (Q/E 키 입력) ---
+    // --- 2. 시점(카메라 및 캐릭터) 회전 로직 (A/D 키 입력) ---
     const lookSpeed = 2.0; // 시점 회전 속도 (필요시 조절)
     
     // 뒤로 이동 중일 때는 자연스러운 조향을 위해 좌우 회전 방향을 반전시킵니다.
@@ -144,10 +230,10 @@ export default function CharacterController({ children, speed = 4, jumpHeight = 
     if (rotateLeft) characterYaw.current += currentLookSpeed * delta;
     if (rotateRight) characterYaw.current -= currentLookSpeed * delta;
 
-    // 2. 카메라의 현재 회전각(rotation.yaw)을 캐릭터의 실제 회전각(characterYaw)으로 부드럽게 보간(lerp)하여 연속적으로 회전시킵니다.
+    // 카메라의 현재 회전각(yaw)을 캐릭터의 실제 회전각으로 부드럽게 보간(lerp)합니다.
     rotation.current.yaw = THREE.MathUtils.lerp(rotation.current.yaw, characterYaw.current, delta * 10);
 
-    // 4. 캐릭터 모델의 Y축 회전을 실제 회전각(characterYaw)과 동기화하여 부드럽게 회전시킵니다.
+    // 캐릭터 모델의 Y축 회전을 실제 회전각과 동기화하여 부드럽게 회전시킵니다.
     character.current.rotation.y = characterYaw.current - Math.PI;
 
     // 카메라의 y축 회전(yaw)을 기준으로 방향 벡터를 계산합니다.
@@ -156,7 +242,7 @@ export default function CharacterController({ children, speed = 4, jumpHeight = 
       .normalize()
       .applyEuler(cameraYaw);
 
-    // --- 2. 접지 확인 (Raycasting) ---
+    // --- 3. 접지 확인 및 점프 선입력 판정 (Raycasting) ---
     let raycastStartOffset = 0;
     if (colliderProps.type === 'capsule') {
       const [halfHeight, radius] = colliderProps.args;
@@ -208,22 +294,53 @@ export default function CharacterController({ children, speed = 4, jumpHeight = 
     }
     wasGrounded.current = isGrounded; // 로그 출력과 상관없이 이전 접지 상태는 항상 업데이트
 
-    // --- 3. 이동 및 점프 속도 일괄 적용 ---
+    // --- 4. 이동 및 점프 속도 일괄 적용 ---
     
     // Shift 키를 누르고 있으면 기본 속도의 1.8배로 달립니다.
     const currentSpeed = run ? speed * 1.8 : speed;
     
-    // 💡 입력된 지 200ms 이내(wantsToJump)이고 땅에 닿아있다면 점프 속도를 적용합니다.
-    const targetVelocityY = (isStarted && wantsToJump && isGrounded) ? speed * jumpHeight * 2.5 : velocity.y;
-    const newVel = new THREE.Vector3(moveDirection.x * currentSpeed, targetVelocityY, moveDirection.z * currentSpeed);
-    body.current.setLinvel(newVel, true);
+    // 현재 중력 모드에 따라 이동 로직을 분기합니다.
+    if (gravityMode === 'none') {
+      // --- 무중력 모드: 토글 방식 이동 ---
+      const currentVel = body.current.linvel();
+      const targetVel = new THREE.Vector3(); // 목표 속도를 0으로 초기화
+
+      // 목표 수평 속도를 카메라 방향 기준으로 계산
+      const horizontalMove = new THREE.Vector3(
+        (toggledMove.current.left ? 1 : 0) - (toggledMove.current.right ? 1 : 0),
+        0,
+        (toggledMove.current.forward ? 1 : 0) - (toggledMove.current.back ? 1 : 0)
+      );
+      
+      horizontalMove.normalize().applyEuler(cameraYaw);
+      
+      targetVel.x = horizontalMove.x * speed;
+      targetVel.z = horizontalMove.z * speed;
+
+      // 목표 수직 속도 계산
+      targetVel.y = ((toggledMove.current.jump ? 1 : 0) - (toggledMove.current.down ? 1 : 0)) * speed;
+
+      // 현재 속도에서 목표 속도로 부드럽게 보간하여 관성 효과를 줍니다.
+      const newVel = new THREE.Vector3(currentVel.x, currentVel.y, currentVel.z);
+      newVel.lerp(targetVel, delta * 5);
+
+      body.current.setLinvel(newVel, true);
+    } else {
+      // --- 일반 중력 모드: 일반 이동 및 점프 ---
+      let targetVelocityY = velocity.y;
+      if (isStarted && wantsToJump && isGrounded) {
+        targetVelocityY = speed * jumpHeight * 2.5;
+      }
+      const newVel = new THREE.Vector3(moveDirection.x * currentSpeed, targetVelocityY, moveDirection.z * currentSpeed);
+      body.current.setLinvel(newVel, true);
+    }
     
     // 점프가 성공적으로 적용되었다면, 선입력 시간을 0으로 초기화하여 중복 점프를 방지합니다.
     if (wantsToJump && isGrounded) {
       jumpPressedTime.current = 0;
     }
 
-    // --- 5. 3인칭 카메라 위치 업데이트 (구면 좌표계) ---
+    // --- 5. 카메라 위치 및 시점(LookAt) 업데이트 ---
     // 달리기 상태(Shift)이고 실제로 이동 중일 때 카메라를 약간 뒤로(줌 아웃) 뺍니다.
     const isMoving = forward || back || left || right;
     let activeTargetDistance = targetDistance.current;

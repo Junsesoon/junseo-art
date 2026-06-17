@@ -1,11 +1,11 @@
-import React, { Suspense, useMemo, useState } from 'react';
+import React, { Suspense, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { GizmoHelper, GizmoViewport, KeyboardControls } from '@react-three/drei';
-import { Physics, RigidBody, CuboidCollider } from '@react-three/rapier';
+import { Physics } from '@react-three/rapier';
 import Judy from './components/Judy';
 import Nick from './components/Nick';
 import Lambo from './components/Lambo';
-import CharacterController, { Controls } from './physics/CharacterController';
+import CharacterController, { keyboardMap } from './physics/CharacterController';
 import Underground from './physics/Underground';
 import Gravity from './physics/Gravity';
 import Ground from './components/Ground';
@@ -13,28 +13,10 @@ import Scr_Start from './components/Scr_Start';
 import Scr_CharacterSelect from './components/Scr_CharacterSelect';
 
 export default function App() {
-  // 키보드 컨트롤을 위한 맵을 정의합니다.
-  const map = useMemo(() => [
-    // 이동 (W, Q, S, E)
-    { name: Controls.forward, keys: ['KeyW'] },
-    { name: Controls.back, keys: ['KeyS'] },
-    { name: Controls.left, keys: ['KeyQ'] },
-    { name: Controls.right, keys: ['KeyE'] },
-    { name: Controls.jump, keys: ['Space'] }, // 불필요한 'KeySpace' 값 제거
-    // 달리기 (Shift)
-    { name: Controls.run, keys: ['ShiftLeft', 'ShiftRight'] },
-    // 화면 회전 (A, D)
-    { name: Controls.rotateLeft, keys: ['KeyA'] },
-    { name: Controls.rotateRight, keys: ['KeyD'] },
-  ], []);
-
-  // 디버그 모드 상태 (현재는 기능 없이 UI 토글용으로만 사용)
-  const [isDebugMode, setIsDebugMode] = useState(false);
-
-  // 앱 진행 상태 관리: 'start' -> 'select' -> 'playing'
-  const [appState, setAppState] = useState('start');
-  // 선택된 캐릭터 상태 (추후 다양한 캐릭터 렌더링에 활용)
-  const [selectedCharacter, setSelectedCharacter] = useState('judy');
+  const [isDebugMode, setIsDebugMode] = useState(false);   // 디버그 모드 상태 (현재는 기능 없이 UI 토글용으로만 사용)
+  const [appState, setAppState] = useState('start');   // 앱 진행 상태 관리: 'start' -> 'select' -> 'playing'
+  const [selectedCharacter, setSelectedCharacter] = useState('judy');   // 선택된 캐릭터 상태 (추후 다양한 캐릭터 렌더링에 활용)
+  const [gravityMode, setGravityMode] = useState('default');   // 중력 모드 상태 관리
 
   return (
     <>
@@ -92,22 +74,26 @@ export default function App() {
                 🗿 캐릭터 선택
               </button>
 
-              {/* 중력 모드 버튼 (현재는 UI만 구현) */}
-              <button
-                // onClick={} // 기능은 추후 구현
+              {/* 중력 모드 선택 드롭다운 */}
+              <select
+                value={gravityMode}
+                onChange={(e) => setGravityMode(e.target.value)}
                 style={{
                   padding: '10px 16px',
                   backgroundColor: '#ffffff',
                   color: '#333333',
-                  border: 'none',
+                  border: '1px solid #ccc', // select 요소에 테두리를 추가하여 명확하게 표시
                   borderRadius: '6px',
                   cursor: 'pointer',
                   fontWeight: 'bold',
                   boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
                 }}
               >
-                🪐 중력 모드
-              </button>
+                <option value="default">🌏 중력: 기본</option>
+                <option value="moon">🌕 중력: 달</option>
+                <option value="none">👨‍🚀 중력: 우주</option>
+                <option value="double">🏋️ 중력: 2배</option>
+              </select>
             </div>
 
             {/* 캐릭터 좌표를 실시간으로 보여줄 텍스트 영역 */}
@@ -131,7 +117,7 @@ export default function App() {
           </div>
 
           {/* KeyboardControls로 Canvas를 감싸고, 위에서 정의한 key map을 전달합니다. */}
-          <KeyboardControls map={map}>
+          <KeyboardControls map={keyboardMap}>
             <Canvas shadows camera={{ fov: 60 }}>
               {/* 전체적인 밝기를 담당하는 기본 조명 */}
               <ambientLight intensity={1.5} />
@@ -144,7 +130,7 @@ export default function App() {
                 <Physics debug={isDebugMode} paused={appState !== 'playing'}>
 
                   {/* 독립적으로 중력 상태와 이벤트를 관리하는 전역 중력 매니저 */}
-                  <Gravity />
+                  <Gravity mode={gravityMode} />
 
                       {/* 디버그 모드일 때만 표시되는 맵 측정/디버깅용 그리드 (바닥보다 살짝 위에 배치하여 겹침 방지) */}
                       {isDebugMode && <gridHelper args={[100, 100]} position={[0, 0.00001, 0]} />}
@@ -154,7 +140,7 @@ export default function App() {
 
                   {/* 맵 밖으로 추락하는 객체를 리셋해주는 전역 데스존 센서 */}
                   <Underground position={[0, -10, 0]} />
-                  <CharacterController isDebugMode={isDebugMode} isStarted={appState === 'playing'}>
+                  <CharacterController isDebugMode={isDebugMode} isStarted={appState === 'playing'} gravityMode={gravityMode}>
                     {selectedCharacter === 'judy' && <Judy scale={0.8} />}
                     {selectedCharacter === 'nick' && <Nick scale={0.8} />}
                     {selectedCharacter === 'lambo' && <Lambo scale={0.8} />}

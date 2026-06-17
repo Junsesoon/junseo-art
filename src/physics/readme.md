@@ -5,4 +5,5 @@
 * ⚠️물리 연산은 프론트엔드 성능에 큰 영향을 미칩니다. 불필요하게 많은 동적 객체 생성을 피하고, 이 폴더에서 만든 컴포넌트들은 반드시 상위 파일(예: `App.jsx`)에서 `<Physics>` 태그로 감싸진 영역 안에서만 사용해야 합니다
 
 # files
-* `CharacterController.jsx`: Rapier의 `RigidBody`와 `CapsuleCollider`를 사용하여 물리 기반 캐릭터 컨트롤러를 구현한 컴포넌트입니다. 키보드 입력, 점프, 접지 확인(Raycast), 3인칭 카메라 로직을 포함합니다.
+* `CharacterController.jsx`: Rapier의 `RigidBody`와 `CapsuleCollider`를 사용하여 물리 기반 캐릭터 컨트롤러를 구현한 컴포넌트입니다. 키보드 입력, 점프, 접지 확인(Raycast), 3인칭 카메라 로직을 포함합니다
+* `Underground.jsx`: 맵 아래로 추락하는 물리 객체(캐릭터, 아이템 등)를 감지하고 지정된 위치로 강제 복구시키는 전역 데스존
