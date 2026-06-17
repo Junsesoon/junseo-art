@@ -7,6 +7,7 @@ import Nick from './components/Nick';
 import Lambo from './components/Lambo';
 import CharacterController, { Controls } from './physics/CharacterController';
 import Underground from './physics/Underground';
+import Gravity from './physics/Gravity';
 import Ground from './components/Ground';
 import Scr_Start from './components/Scr_Start';
 import Scr_CharacterSelect from './components/Scr_CharacterSelect';
@@ -90,6 +91,23 @@ export default function App() {
               >
                 🗿 캐릭터 선택
               </button>
+
+              {/* 중력 모드 버튼 (현재는 UI만 구현) */}
+              <button
+                // onClick={} // 기능은 추후 구현
+                style={{
+                  padding: '10px 16px',
+                  backgroundColor: '#ffffff',
+                  color: '#333333',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                  boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                }}
+              >
+                🪐 중력 모드
+              </button>
             </div>
 
             {/* 캐릭터 좌표를 실시간으로 보여줄 텍스트 영역 */}
@@ -125,11 +143,14 @@ export default function App() {
                 {/* 게임 플레이 상태가 아닐 때는 Physics(물리 엔진)를 정지하여 중력 및 충돌 연산을 멈춥니다. */}
                 <Physics debug={isDebugMode} paused={appState !== 'playing'}>
 
+                  {/* 독립적으로 중력 상태와 이벤트를 관리하는 전역 중력 매니저 */}
+                  <Gravity />
+
                       {/* 디버그 모드일 때만 표시되는 맵 측정/디버깅용 그리드 (바닥보다 살짝 위에 배치하여 겹침 방지) */}
                       {isDebugMode && <gridHelper args={[100, 100]} position={[0, 0.00001, 0]} />}
 
-                  {/* 캐릭터가 밟고 다닐 수 있는 100x100 기본 지면 (y위치를 -0.10001로 설정) */}
-                  <Ground position={[0, -0.10001, 0]} />
+                  {/* 캐릭터가 밟고 다닐 수 있는 100x100 기본 지면 (y위치를 -0.00001로 설정) */}
+                  <Ground position={[0, -0.00001, 0]} />
 
                   {/* 맵 밖으로 추락하는 객체를 리셋해주는 전역 데스존 센서 */}
                   <Underground position={[0, -10, 0]} />

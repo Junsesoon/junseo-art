@@ -81,8 +81,8 @@ export default function CharacterController({ children, speed = 4, jumpHeight = 
   const rotation = useRef({ yaw: Math.PI, pitch: 0 }); // 초기 yaw를 PI로 설정하여 캐릭터의 뒷모습에서 시작
   const characterYaw = useRef(Math.PI); // 캐릭터의 실제 연속 회전값
 
-  // 점프 키 입력을 감지하기 위한 플래그 (누르는 순간만 반응하도록)
-  const jumpPressed = useRef(false);
+  // 점프 선입력(Jump Buffer)을 위해 마지막으로 점프키를 누른 시간을 기록합니다.
+  const jumpPressedTime = useRef(0);
   const wasGrounded = useRef(false); // 이전 접지 상태를 저장하기 위한 ref
   const cameraTarget = useRef(new THREE.Vector3()); // 카메라 시점(LookAt)을 부드럽게 만들기 위한 보간용 벡터
 
@@ -95,10 +95,9 @@ export default function CharacterController({ children, speed = 4, jumpHeight = 
     const unsubJump = sub(
       (state) => state.jump,
       (pressed) => {
-        if (pressed && !jumpPressed.current) {
-          jumpPressed.current = true;
-        } else if (!pressed) {
-          jumpPressed.current = false;
+        // 누르는 순간의 정확한 시간을 기록합니다. (점프 선입력 기능 활용)
+        if (pressed) {
+          jumpPressedTime.current = performance.now();
         }
       }
     );
@@ -128,13 +127,7 @@ export default function CharacterController({ children, speed = 4, jumpHeight = 
   useFrame((state, delta) => {
     if (!body.current || !character.current) return;
 
-    // --- 추가: 낙하 시 위치 리셋 로직 ---
     const bodyPosition = body.current.translation();
-    if (bodyPosition.y < -10) { // 특정 높이(-10) 이하로 떨어졌을 때
-      body.current.setTranslation({ x: 0, y: 3, z: 0 }, true); // 초기 위치로 리셋
-      body.current.setLinvel({ x: 0, y: 0, z: 0 }, true); // 이동 속도 초기화
-      return; // 리셋 후 해당 프레임의 나머지 로직은 실행하지 않음
-    }
 
     // --- 1. 키 입력 및 방향 계산 ---
     // 게임 시작 전(!isStarted)에는 입력을 무시하도록 빈 객체를 반환합니다.
@@ -191,37 +184,43 @@ export default function CharacterController({ children, speed = 4, jumpHeight = 
     // hit이 존재하면 탐색 거리(rayLength) 이내에 바닥이 있다는 뜻이므로 완벽한 접지 상태입니다.
     const isGrounded = hit !== null;
 
+    // 💡 점프 선입력(Jump Buffer) 판정: 키를 누른 지 200ms 이내인지 확인합니다.
+    const wantsToJump = performance.now() - jumpPressedTime.current < 200;
+
     // --- 추가: 접지 및 점프 판정 디버깅 로그 ---
     // 매 프레임 로그가 도배되는 것을 막기 위해 접지 상태가 변할 때만 출력합니다.
     if (isDebugMode) {
       if (isGrounded !== wasGrounded.current) {
         console.log('접지 판정:', isGrounded ? '바닥에 닿음 (true)' : '공중에 있음 (false)');
       }
-      if (jumpPressed.current) {
-        console.log('점프 판정:', isGrounded ? '성공 (점프 실행!)' : '실패 (공중에 있음)');
+      // 선입력 유효 기간 내에 접지 상태가 만족되어 점프가 실행되는 순간 로깅
+      if (wantsToJump && isGrounded) {
+        console.log('점프 판정: 성공 (점프 실행!)');
       }
       
       // React 상태(State) 대신 DOM을 직접 조작하여 좌표 텍스트를 업데이트합니다 (초당 60회 렌더링 방지용)
       const coordsEl = document.getElementById('debug-coords');
       if (coordsEl) {
-        coordsEl.innerText = `X: ${bodyPosition.x.toFixed(2)} | Y: ${bodyPosition.y.toFixed(2)} | Z: ${bodyPosition.z.toFixed(2)}`;
+        // 디버그 UI에는 헷갈리지 않게 캐릭터의 중심(Center)이 아닌 발끝(Feet) 기준으로 Y좌표를 계산해서 보여줍니다.
+        const footY = bodyPosition.y - raycastStartOffset;
+        coordsEl.innerText = `X: ${bodyPosition.x.toFixed(2)} | 발끝 Y: ${footY.toFixed(2)} | Z: ${bodyPosition.z.toFixed(2)}`;
       }
     }
     wasGrounded.current = isGrounded; // 로그 출력과 상관없이 이전 접지 상태는 항상 업데이트
 
     // --- 3. 이동 및 점프 속도 일괄 적용 ---
-    // 점프 플래그가 설정되고 땅에 닿아있다면 점프 속도를 적용합니다.
-    // jumpPressed는 누르는 순간만 true이므로 안정적인 1회 점프를 보장합니다.
     
     // Shift 키를 누르고 있으면 기본 속도의 1.8배로 달립니다.
     const currentSpeed = run ? speed * 1.8 : speed;
-    const targetVelocityY = (isStarted && jumpPressed.current && isGrounded) ? speed * jumpHeight * 2.5 : velocity.y;
+    
+    // 💡 입력된 지 200ms 이내(wantsToJump)이고 땅에 닿아있다면 점프 속도를 적용합니다.
+    const targetVelocityY = (isStarted && wantsToJump && isGrounded) ? speed * jumpHeight * 2.5 : velocity.y;
     const newVel = new THREE.Vector3(moveDirection.x * currentSpeed, targetVelocityY, moveDirection.z * currentSpeed);
     body.current.setLinvel(newVel, true);
     
-    // 점프 적용 후 플래그를 초기화하여 다음 누르기를 대기합니다.
-    if (jumpPressed.current) {
-      jumpPressed.current = false;
+    // 점프가 성공적으로 적용되었다면, 선입력 시간을 0으로 초기화하여 중복 점프를 방지합니다.
+    if (wantsToJump && isGrounded) {
+      jumpPressedTime.current = 0;
     }
 
     // --- 5. 3인칭 카메라 위치 업데이트 (구면 좌표계) ---
