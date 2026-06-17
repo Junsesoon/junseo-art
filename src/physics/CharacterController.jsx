@@ -103,8 +103,13 @@ export default function CharacterController({ children, speed = 4, jumpHeight = 
 
     // --- 시점(카메라 및 캐릭터) 회전 로직 (Q/E 키 입력) ---
     const lookSpeed = 2.0; // 시점 회전 속도 (필요시 조절)
-    if (rotateLeft) characterYaw.current += lookSpeed * delta;
-    if (rotateRight) characterYaw.current -= lookSpeed * delta;
+    
+    // 뒤로 이동 중일 때는 자연스러운 조향을 위해 좌우 회전 방향을 반전시킵니다.
+    const isMovingBack = back && !forward;
+    const currentLookSpeed = isMovingBack ? -lookSpeed : lookSpeed;
+
+    if (rotateLeft) characterYaw.current += currentLookSpeed * delta;
+    if (rotateRight) characterYaw.current -= currentLookSpeed * delta;
 
     // 2. 카메라의 현재 회전각(rotation.yaw)을 캐릭터의 실제 회전각(characterYaw)으로 부드럽게 보간(lerp)하여 연속적으로 회전시킵니다.
     rotation.current.yaw = THREE.MathUtils.lerp(rotation.current.yaw, characterYaw.current, delta * 10);
